@@ -13,7 +13,7 @@ from yt.utilities import fortran_utils as fpu
 from yt.utilities.cosmology import Cosmology
 from yt.utilities.exceptions import YTFieldNotFound
 
-from .definitions import header_dt
+from .definitions import halo_dts, header_dt
 from .fields import RockstarFieldInfo
 
 
@@ -170,6 +170,24 @@ class RockstarDataset(ParticleDataset):
             return False
         else:
             return header["magic"] == 18077126535843729616
+
+    @classmethod
+    def get_halo_dt_template(cls, revision=2) -> list[tuple[str, Any]]:
+        halo_dt = halo_dts[revision]
+        # convert numpy dtype back to similar format as specified in definitions.py
+        return [
+            *zip(
+                halo_dt.names,
+                [halo_dt[i].type for i, _ in enumerate(halo_dt.names)],
+                strict=False,
+            )
+        ]
+
+    def set_user_halo_dt(self, halo_dt):
+        self.parameters["format_revision"] = -1  # user-specified
+        if not isinstance(halo_dt, np.dtype):
+            halo_dt = np.dtype(halo_dt, align=True)
+        halo_dts[self.parameters["format_revision"]] = halo_dt
 
     def halo(self, ptype, particle_identifier):
         return RockstarHaloContainer(
